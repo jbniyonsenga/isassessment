@@ -1,24 +1,80 @@
-import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Page, Path, Rect, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import { ANSWER_LABELS, DISCLAIMER, THRESHOLDS, thresholdFor } from "@/lib/assessment/config";
 import type { AssessmentResult, Finding, ScoreLevel } from "@/lib/assessment/types";
 import { formatDate, formatScore, SEVERITY_LABELS } from "@/lib/assessment/format";
+import { BRAND, LEVEL_COLOR, LOGO_BARS, LOGO_SHIELD, SEVERITY_COLOR } from "@/lib/assessment/theme";
 
-const LEVEL_COLORS: Record<ScoreLevel, string> = {
-  strong: "#15803d",
-  moderate: "#b45309",
-  weak: "#b91c1c",
-};
+const LEVEL_COLORS = LEVEL_COLOR;
+const SEVERITY_COLORS = SEVERITY_COLOR;
 
-const SEVERITY_COLORS: Record<Finding["severity"], string> = {
-  critical: "#b91c1c",
-  high: "#c2410c",
-  medium: "#b45309",
-  low: "#4b5563",
-};
+/** Thresholds sorted ascending with their upper bound. */
+const BANDS = [...THRESHOLDS]
+  .reverse()
+  .map((t, i, all) => ({ ...t, max: i < all.length - 1 ? all[i + 1].min : 100 }));
+
+function PdfLogo({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 32 32">
+      <Path d={LOGO_SHIELD} fill={BRAND} />
+      {LOGO_BARS.map((b) => (
+        <Rect key={b.x} x={b.x} y={b.y} width={3} height={b.h} rx={1} fill="#ffffff" />
+      ))}
+    </Svg>
+  );
+}
+
+/** A4 width (595pt) minus 2 × 40pt page padding. */
+const METER_WIDTH = 515;
+
+function PdfMeter({ score }: { score: number | null }) {
+  return (
+    <View style={{ width: METER_WIDTH }}>
+      <Svg width={METER_WIDTH} height={22}>
+        {BANDS.map((b) => (
+          <Rect
+            key={b.level}
+            x={(b.min / 100) * METER_WIDTH + (b.min > 0 ? 1 : 0)}
+            y={8}
+            width={((b.max - b.min) / 100) * METER_WIDTH - (b.min > 0 ? 1 : 0)}
+            height={8}
+            fill={LEVEL_COLOR[b.level]}
+            fillOpacity={0.35}
+          />
+        ))}
+        {score !== null && (
+          <Rect x={(score / 100) * METER_WIDTH - 1} y={3} width={2} height={18} fill="#0f172a" />
+        )}
+      </Svg>
+      <View style={{ position: "relative", height: 10, fontSize: 7, color: "#64748b" }}>
+        {[0, ...BANDS.slice(1).map((b) => b.min), 100].map((v) => (
+          <Text
+            key={v}
+            style={{
+              position: "absolute",
+              left: Math.min(Math.max((v / 100) * METER_WIDTH - 6, 0), METER_WIDTH - 14),
+              width: 14,
+              textAlign: v === 0 ? "left" : v === 100 ? "right" : "center",
+            }}
+          >
+            {v}
+          </Text>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 const s = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#111827", lineHeight: 1.4 },
-  h1: { fontSize: 20, fontFamily: "Helvetica-Bold", lineHeight: 1.2, marginBottom: 6 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: BRAND,
+    color: "#ffffff",
+    borderRadius: 6,
+    padding: 12,
+    lineHeight: 1.2,
+  },
   h2: { fontSize: 13, fontFamily: "Helvetica-Bold", marginTop: 18, marginBottom: 8 },
   muted: { color: "#6b7280" },
   small: { fontSize: 8 },
@@ -34,13 +90,18 @@ const s = StyleSheet.create({
 
 function LevelText({ level }: { level: ScoreLevel | null }) {
   if (!level) return <Text style={s.muted}>No applicable answers</Text>;
-  return <Text style={{ color: LEVEL_COLORS[level] }}>{thresholdFor(level).label}</Text>;
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center" }}>
+      <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: LEVEL_COLORS[level], marginRight: 4 }} />
+      <Text>{thresholdFor(level).label}</Text>
+    </View>
+  );
 }
 
 function FindingItem({ finding }: { finding: Finding }) {
   return (
-    <View style={s.box} wrap={false}>
-      <Text style={{ color: SEVERITY_COLORS[finding.severity], fontFamily: "Helvetica-Bold", fontSize: 8 }}>
+    <View style={[s.box, { borderLeftWidth: 3, borderLeftColor: SEVERITY_COLORS[finding.severity] }]} wrap={false}>
+      <Text style={{ color: "#334155", fontFamily: "Helvetica-Bold", fontSize: 8 }}>
         {SEVERITY_LABELS[finding.severity].toUpperCase()} · {finding.question.id} · Answer:{" "}
         {ANSWER_LABELS[finding.answer]}
       </Text>
@@ -62,11 +123,21 @@ export function ReportDocument({ result }: { result: AssessmentResult }) {
   return (
     <Document title="IT System Quick Audit report" author="IT System Quick Audit">
       <Page size="A4" style={s.page}>
-        <Text style={s.h1}>IT System Quick Audit — Report</Text>
-        <Text style={s.muted}>
-          Assessment date: {formatDate(result.assessedAt)} · Questionnaire {result.questionnaireVersion} · Scoring{" "}
-          {result.scoringVersion}
-        </Text>
+        <View style={s.header}>
+          <View style={{ backgroundColor: "#ffffff", borderRadius: 6, padding: 4, marginRight: 10 }}>
+            <PdfLogo size={30} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 8, color: "#c7d2fe" }}>IT SYSTEM QUICK AUDIT</Text>
+            <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold" }}>Assessment report</Text>
+          </View>
+          <View style={{ alignItems: "flex-end", fontSize: 8, color: "#e0e7ff" }}>
+            <Text>{formatDate(result.assessedAt)}</Text>
+            <Text>
+              Questionnaire {result.questionnaireVersion} · Scoring {result.scoringVersion}
+            </Text>
+          </View>
+        </View>
 
         {(context.organization || context.systemName || context.scope) && (
           <View style={[s.box, { marginTop: 12 }]}>
@@ -87,6 +158,9 @@ export function ReportDocument({ result }: { result: AssessmentResult }) {
               {overall.points} / {overall.maxPoints} applicable points
             </Text>
           </View>
+        </View>
+        <View style={{ marginTop: 6 }}>
+          <PdfMeter score={overall.score} />
         </View>
 
         {result.criticalRisks.length > 0 && (

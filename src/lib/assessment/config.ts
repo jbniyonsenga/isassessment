@@ -19,6 +19,7 @@ export interface Threshold {
   level: ScoreLevel;
   min: number;
   label: string;
+  short: string;
 }
 
 function parseThresholds(raw: string | undefined): [number, number] {
@@ -40,9 +41,9 @@ function parseThresholds(raw: string | undefined): [number, number] {
 const [STRONG_MIN, MODERATE_MIN] = parseThresholds(process.env.NEXT_PUBLIC_SCORE_THRESHOLDS);
 
 export const THRESHOLDS: Threshold[] = [
-  { level: "strong", min: STRONG_MIN, label: "Strong control environment" },
-  { level: "moderate", min: MODERATE_MIN, label: "Moderate — improvements needed" },
-  { level: "weak", min: 0, label: "Weak — significant improvements needed" },
+  { level: "strong", min: STRONG_MIN, label: "Strong control environment", short: "Strong" },
+  { level: "moderate", min: MODERATE_MIN, label: "Moderate — improvements needed", short: "Moderate" },
+  { level: "weak", min: 0, label: "Weak — significant improvements needed", short: "Weak" },
 ];
 
 export function levelFor(score: number): ScoreLevel {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 import { DISCLAIMER } from "@/lib/assessment/config";
 import "./globals.css";
 
@@ -27,8 +28,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col font-sans">
         <header className="border-b border-slate-200 bg-white">
           <nav className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-            <Link href="/" className="font-semibold text-slate-900">
-              IT System <span className="text-indigo-600">Quick Audit</span>
+            <Link href="/" className="flex items-center gap-2 font-semibold text-slate-900">
+              <Logo size={28} />
+              <span>
+                IT System <span className="text-indigo-600">Quick Audit</span>
+              </span>
             </Link>
             <div className="flex gap-4 text-sm text-slate-600">
               <Link href="/methodology" className="hover:text-slate-900">
