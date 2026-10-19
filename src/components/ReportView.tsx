@@ -208,7 +208,7 @@ export function ReportView({ result }: { result: AssessmentResult }) {
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-gradient-to-r from-indigo-600 to-indigo-800 px-6 py-5 text-white">
           <div className="rounded-xl bg-white p-1.5">
-            <Logo size={36} />
+            <Logo size={44} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs uppercase tracking-wider text-indigo-200">IT System Quick Audit</p>

@@ -125,7 +125,7 @@ export function ReportDocument({ result }: { result: AssessmentResult }) {
       <Page size="A4" style={s.page}>
         <View style={s.header}>
           <View style={{ backgroundColor: "#ffffff", borderRadius: 6, padding: 4, marginRight: 10 }}>
-            <PdfLogo size={30} />
+            <PdfLogo size={36} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 8, color: "#c7d2fe" }}>IT SYSTEM QUICK AUDIT</Text>

@@ -29,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <header className="border-b border-slate-200 bg-white">
           <nav className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
             <Link href="/" className="flex items-center gap-2 font-semibold text-slate-900">
-              <Logo size={28} />
+              <Logo size={36} />
               <span>
                 IT System <span className="text-indigo-600">Quick Audit</span>
               </span>
