@@ -2,42 +2,87 @@ import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
 import { DISCLAIMER } from "@/lib/assessment/config";
 
-let transporter: Transporter | null | undefined;
+interface Mail {
+  to: string;
+  subject: string;
+  text: string;
+  attachment: { filename: string; content: Buffer };
+}
+
+type Sender = (mail: Mail) => Promise<void>;
+
+let sender: Sender | null | undefined;
+
+const from = () => process.env.MAIL_FROM || "IT System Quick Audit <no-reply@localhost>";
+
+/** Resend HTTPS API, for hosts that block outbound SMTP (e.g. Railway Hobby plan). */
+function resendSender(apiKey: string): Sender {
+  return async (mail) => {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: from(),
+        to: [mail.to],
+        subject: mail.subject,
+        text: mail.text,
+        attachments: [{ filename: mail.attachment.filename, content: mail.attachment.content.toString("base64") }],
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) throw new Error(`Resend API responded ${res.status}`);
+  };
+}
+
+function smtpSender(transport: Transporter): Sender {
+  return async (mail) => {
+    await transport.sendMail({
+      from: from(),
+      to: mail.to,
+      subject: mail.subject,
+      text: mail.text,
+      attachments: [{ ...mail.attachment, contentType: "application/pdf" }],
+    });
+  };
+}
 
 /**
- * SMTP transport configured through environment variables. In development without
- * SMTP_HOST, a JSON transport is used so the flow can be tested without sending mail.
+ * Email provider chosen from environment variables: RESEND_API_KEY, otherwise SMTP_HOST.
+ * In development with neither, a JSON transport is used so the flow can be tested without sending mail.
  */
-function getTransporter(): Transporter | null {
-  if (transporter !== undefined) return transporter;
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE } = process.env;
-  if (SMTP_HOST) {
+function getSender(): Sender | null {
+  if (sender !== undefined) return sender;
+  const { RESEND_API_KEY, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE } = process.env;
+  if (RESEND_API_KEY) {
+    sender = resendSender(RESEND_API_KEY);
+  } else if (SMTP_HOST) {
     const port = Number(SMTP_PORT || 587);
-    transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port,
-      secure: SMTP_SECURE ? SMTP_SECURE === "true" : port === 465,
-      requireTLS: port !== 465,
-      auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
-    });
+    sender = smtpSender(
+      nodemailer.createTransport({
+        host: SMTP_HOST,
+        port,
+        secure: SMTP_SECURE ? SMTP_SECURE === "true" : port === 465,
+        requireTLS: port !== 465,
+        auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
+      }),
+    );
   } else if (process.env.NODE_ENV !== "production") {
-    transporter = nodemailer.createTransport({ jsonTransport: true });
+    sender = smtpSender(nodemailer.createTransport({ jsonTransport: true }));
   } else {
-    transporter = null;
+    sender = null;
   }
-  return transporter;
+  return sender;
 }
 
 export function isEmailConfigured(): boolean {
-  return getTransporter() !== null;
+  return getSender() !== null;
 }
 
 export async function sendReportEmail(to: string, pdf: Buffer, filename: string): Promise<void> {
-  const transport = getTransporter();
-  if (!transport) throw new Error("Email delivery is not configured");
+  const send = getSender();
+  if (!send) throw new Error("Email delivery is not configured");
 
-  await transport.sendMail({
-    from: process.env.MAIL_FROM || "IT System Quick Audit <no-reply@localhost>",
+  await send({
     to,
     subject: "Your IT System Quick Audit report",
     text:
@@ -45,6 +90,6 @@ export async function sendReportEmail(to: string, pdf: Buffer, filename: string)
       "Please find attached the report of the IT system quick audit you requested.\n\n" +
       `${DISCLAIMER}\n\n` +
       "Your email address was used only to send this report and has not been stored.\n",
-    attachments: [{ filename, content: pdf, contentType: "application/pdf" }],
+    attachment: { filename, content: pdf },
   });
 }
