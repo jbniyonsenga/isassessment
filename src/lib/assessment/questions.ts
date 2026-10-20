@@ -1,5 +1,10 @@
-import type { Criterion, Question } from "./types";
+import type { Criterion, Question, Questionnaire } from "./types";
 
+/**
+ * Source definition of the current questionnaire version. It is loaded into the
+ * database by prisma/seed.ts; the running application reads the database.
+ * Never edit a published version in place: copy it under a new code instead.
+ */
 export const QUESTIONNAIRE_VERSION = "Q-1.0";
 
 export const CRITERIA: Criterion[] = [
@@ -337,4 +342,8 @@ export const QUESTIONS: Question[] = [
   },
 ];
 
-export const QUESTIONS_BY_ID = new Map(QUESTIONS.map((q) => [q.id, q]));
+export const CURRENT_QUESTIONNAIRE: Questionnaire = {
+  code: QUESTIONNAIRE_VERSION,
+  criteria: CRITERIA,
+  questions: QUESTIONS,
+};

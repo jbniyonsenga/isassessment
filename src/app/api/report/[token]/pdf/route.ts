@@ -1,26 +1,25 @@
-import { submissionSchema } from "@/lib/assessment/schema";
+import { loadReport } from "@/lib/server/assessments";
 import { log } from "@/lib/server/logger";
 import { clientIp, rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
-import { renderReportPdf, pdfFilename } from "@/lib/server/report";
-import { parseJson } from "@/lib/server/request";
+import { pdfFilename, renderReportPdf } from "@/lib/server/report";
 
-/** POST the answers, receive the PDF report. Nothing is stored (NFR-003, NFR-004). */
-export async function POST(request: Request) {
+export async function GET(request: Request, ctx: RouteContext<"/api/report/[token]/pdf">) {
   const limit = rateLimit(`pdf:${clientIp(request)}`, 30, 10 * 60 * 1000);
   if (!limit.ok) return tooManyRequests(limit.retryAfter);
 
-  const parsed = await parseJson(request, submissionSchema);
-  if (!parsed.ok) return parsed.response;
-
+  const { token } = await ctx.params;
   try {
+    const report = await loadReport(token);
+    if (!report) return Response.json({ error: "Report not found" }, { status: 404 });
+
     const started = Date.now();
-    const pdf = await renderReportPdf(parsed.data);
+    const pdf = await renderReportPdf(report.result);
     log.info("report.pdf.generated", { ms: Date.now() - started });
     return new Response(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${pdfFilename()}"`,
-        "Cache-Control": "no-store",
+        "Content-Disposition": `attachment; filename="${pdfFilename(report.result.assessedAt)}"`,
+        "Cache-Control": "private, no-store",
       },
     });
   } catch (error) {

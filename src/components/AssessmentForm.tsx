@@ -3,15 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ANSWER_LABELS } from "@/lib/assessment/config";
-import { CRITERIA, QUESTIONS } from "@/lib/assessment/questions";
 import { missingAnswers } from "@/lib/assessment/scoring";
-import { loadDraft, saveDraft, saveSubmitted } from "@/lib/assessment/storage";
-import type { Answer, AssessmentContext } from "@/lib/assessment/types";
+import { loadDraft, saveDraft } from "@/lib/assessment/storage";
+import type { Answer, AssessmentContext, Questionnaire as QuestionnaireData } from "@/lib/assessment/types";
 
 const ANSWERS: Answer[] = ["yes", "partial", "no", "na"];
-
-// Step 0: context, steps 1..7: criteria, last step: review.
-const REVIEW_STEP = CRITERIA.length + 1;
 
 const ANSWER_STYLES: Record<Answer, string> = {
   yes: "peer-checked:border-green-600 peer-checked:bg-green-50 peer-checked:text-green-800",
@@ -22,41 +18,64 @@ const ANSWER_STYLES: Record<Answer, string> = {
 
 const noopSubscribe = () => () => {};
 
-export function AssessmentForm() {
+export function AssessmentForm({ questionnaire }: { questionnaire: QuestionnaireData }) {
   // The draft lives in sessionStorage, which only exists in the browser: render once hydrated.
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
   if (!hydrated) return <p className="text-slate-500">Loading questionnaire…</p>;
-  return <Questionnaire />;
+  return <Questionnaire questionnaire={questionnaire} />;
 }
 
-function Questionnaire() {
+function Questionnaire({ questionnaire }: { questionnaire: QuestionnaireData }) {
+  const { criteria: CRITERIA, questions: QUESTIONS, code: versionCode } = questionnaire;
+  // Step 0: context, steps 1..n: criteria, last step: review.
+  const REVIEW_STEP = CRITERIA.length + 1;
   const router = useRouter();
   const [step, setStep] = useState(0);
   // Restores a draft from this tab, e.g. after going back from the report to modify answers.
-  const [answers, setAnswers] = useState<Record<string, Answer>>(() => loadDraft()?.answers ?? {});
-  const [context, setContext] = useState<AssessmentContext>(() => loadDraft()?.context ?? {});
+  const [answers, setAnswers] = useState<Record<string, Answer>>(() => loadDraft(versionCode)?.answers ?? {});
+  const [context, setContext] = useState<AssessmentContext>(() => loadDraft(versionCode)?.context ?? {});
   const [showMissing, setShowMissing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  // Same id for re-sends of identical content, so a double click creates only one assessment.
+  const lastRequest = useRef<{ key: string; id: string } | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => saveDraft({ answers, context }), [answers, context]);
+  useEffect(() => saveDraft({ versionCode, answers, context }), [versionCode, answers, context]);
 
   const answeredCount = QUESTIONS.filter((q) => answers[q.id]).length;
-  const missing = missingAnswers(answers);
+  const missing = missingAnswers(questionnaire, answers);
 
   function goTo(next: number) {
     setStep(next);
     topRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
-  function submit() {
+  async function submit() {
     if (missing.length > 0) {
       setShowMissing(true);
       const firstMissing = QUESTIONS.find((q) => q.id === missing[0])!;
       goTo(CRITERIA.findIndex((c) => c.id === firstMissing.criterion) + 1);
       return;
     }
-    saveSubmitted({ answers, context, assessedAt: new Date().toISOString() });
-    router.push("/report");
+    const key = JSON.stringify({ answers, context });
+    if (lastRequest.current?.key !== key) lastRequest.current = { key, id: crypto.randomUUID() };
+
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch("/api/assessments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ versionCode, clientRequestId: lastRequest.current.id, answers, context }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body?.token) throw new Error(body?.error ?? "Your assessment could not be saved.");
+      router.push(`/report/${body.token}`);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Your assessment could not be saved.");
+      setSubmitting(false);
+    }
   }
 
   const criterion = step >= 1 && step <= CRITERIA.length ? CRITERIA[step - 1] : null;
@@ -113,7 +132,7 @@ function Questionnaire() {
           <div>
             <h1 className="text-xl font-semibold">Assessment context</h1>
             <p className="text-sm text-slate-600">
-              Optional. This information only appears in your report and is not stored.
+              Optional. This information appears in your report, which is kept for 12 months.
             </p>
           </div>
           <label className="block space-y-1">
@@ -233,6 +252,12 @@ function Questionnaire() {
         </section>
       )}
 
+      {submitError && (
+        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          {submitError}
+        </p>
+      )}
+
       <div className="flex justify-between gap-3">
         <button type="button" className="btn-secondary" disabled={step === 0} onClick={() => goTo(step - 1)}>
           ← Previous
@@ -242,8 +267,8 @@ function Questionnaire() {
             {step === CRITERIA.length ? "Review answers" : "Next"} →
           </button>
         ) : (
-          <button type="button" className="btn-primary" onClick={submit}>
-            Submit and view report
+          <button type="button" className="btn-primary" onClick={submit} disabled={submitting}>
+            {submitting ? "Saving…" : "Submit and view report"}
           </button>
         )}
       </div>

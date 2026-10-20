@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Questionnaire (seeded from src/lib/questionnaire/definitions.ts) ─────────
+// A published version is immutable: changing questions means a new version, so
+// stored assessments always remain interpretable.
+
+model QuestionnaireVersion {
+  id          String       @id @default(cuid())
+  code        String       @unique // e.g. "Q-1.0"
+  isActive    Boolean      @default(false)
+  publishedAt DateTime     @default(now())
+  criteria    Criterion[]
+  assessments Assessment[]
+}
+
+model Criterion {
+  id          String               @id @default(cuid())
+  versionId   String
+  version     QuestionnaireVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  key         String // e.g. "confidentiality"
+  name        String
+  description String
+  position    Int
+  questions   Question[]
+
+  @@unique([versionId, key])
+}
+
+model Question {
+  id             String    @id @default(cuid())
+  criterionId    String
+  criterion      Criterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  code           String // e.g. "CON-01", unique within a version
+  text           String
+  risk           String
+  recommendation String
+  critical       Boolean   @default(false)
+  position       Int
+  answers        Answer[]
+
+  @@unique([criterionId, code])
+}
+
+// ─── Assessments ──────────────────────────────────────────────────────────────
+
+/// Anonymous user, identified only by a random id stored in a cookie.
+model Participant {
+  id          String       @id @default(uuid())
+  createdAt   DateTime     @default(now())
+  assessments Assessment[]
+}
+
+enum ScoreLevel {
+  strong
+  moderate
+  weak
+}
+
+model Assessment {
+  id              String               @id @default(cuid())
+  /// Secret, unguessable token used in the report URL (NFR-004).
+  token           String               @unique
+  /// Client-generated id so that a double submission creates only one assessment.
+  clientRequestId String               @unique
+  participantId   String
+  participant     Participant          @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  versionId       String
+  version         QuestionnaireVersion @relation(fields: [versionId], references: [id])
+  scoringVersion  String
+  organization    String?
+  systemName      String?
+  scope           String?
+  /// Overall result frozen at submission time, for statistics.
+  score           Float?
+  level           ScoreLevel?
+  submittedAt     DateTime             @default(now())
+  answers         Answer[]
+  emailRequests   EmailRequest[]
+
+  @@index([submittedAt])
+}
+
+enum AnswerValue {
+  yes
+  partial
+  no
+  na
+}
+
+model Answer {
+  assessmentId String
+  assessment   Assessment  @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  questionId   String
+  question     Question    @relation(fields: [questionId], references: [id])
+  value        AnswerValue
+
+  @@id([assessmentId, questionId])
+}
+
+// ─── Email delivery ───────────────────────────────────────────────────────────
+
+enum EmailStatus {
+  pending
+  sent
+  failed
+}
+
+/// One request to email a report. The address is used only for this delivery (FR-037).
+model EmailRequest {
+  id           String      @id @default(cuid())
+  /// Client-generated id: a double click sends only once (FR-036).
+  requestId    String      @unique
+  assessmentId String
+  assessment   Assessment  @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  email        String
+  status       EmailStatus @default(pending)
+  attempts     Int         @default(0)
+  lastError    String?
+  createdAt    DateTime    @default(now())
+  sentAt       DateTime?
+
+  @@index([email, createdAt])
+  @@index([createdAt])
+}

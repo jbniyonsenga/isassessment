@@ -4,6 +4,7 @@
     "buildCommand": "npm run build"
   },
   "deploy": {
+    "preDeployCommand": ["npm run db:deploy"],
     "startCommand": "npm start",
     "healthcheckPath": "/",
     "healthcheckTimeout": 60,

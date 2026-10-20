@@ -16,7 +16,7 @@ export default function Home() {
           <li>✓ No registration</li>
           <li>✓ About 10 minutes</li>
           <li>✓ Online report and PDF</li>
-          <li>✓ Answers are not stored</li>
+          <li>✓ Private report link</li>
         </ul>
         <div className="flex gap-3 pt-2">
           <Link href="/assessment" className="btn-primary px-6 py-3 text-base">

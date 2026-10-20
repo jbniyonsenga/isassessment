@@ -1,11 +1,11 @@
 import { ANSWER_POINTS, MAX_POINTS_PER_QUESTION, SCORING_VERSION, levelFor } from "./config";
-import { CRITERIA, QUESTIONNAIRE_VERSION, QUESTIONS } from "./questions";
 import type {
   AssessmentResult,
   AssessmentSubmission,
   CriterionResult,
   Finding,
   FindingSeverity,
+  Questionnaire,
 } from "./types";
 
 const SEVERITY_ORDER: Record<FindingSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -17,24 +17,25 @@ function score(points: number, maxPoints: number): number | null {
 }
 
 /** Returns the ids of questions that have no answer (FR-005). */
-export function missingAnswers(answers: AssessmentSubmission["answers"]): string[] {
-  return QUESTIONS.filter((q) => !answers[q.id]).map((q) => q.id);
+export function missingAnswers(questionnaire: Questionnaire, answers: AssessmentSubmission["answers"]): string[] {
+  return questionnaire.questions.filter((q) => !answers[q.id]).map((q) => q.id);
 }
 
 export function computeResult(
+  questionnaire: Questionnaire,
   submission: AssessmentSubmission,
   assessedAt: Date = new Date(),
 ): AssessmentResult {
   const { answers } = submission;
   const findings: Finding[] = [];
 
-  const criteria: CriterionResult[] = CRITERIA.map((criterion) => {
+  const criteria: CriterionResult[] = questionnaire.criteria.map((criterion) => {
     let points = 0;
     let maxPoints = 0;
     let answered = 0;
     let notApplicable = 0;
 
-    for (const question of QUESTIONS.filter((q) => q.criterion === criterion.id)) {
+    for (const question of questionnaire.questions.filter((q) => q.criterion === criterion.id)) {
       const answer = answers[question.id];
       if (!answer) continue;
       answered++;
@@ -87,7 +88,7 @@ export function computeResult(
     criticalRisks: findings.filter((f) => f.question.critical),
     context: submission.context,
     assessedAt: assessedAt.toISOString(),
-    questionnaireVersion: QUESTIONNAIRE_VERSION,
+    questionnaireVersion: questionnaire.code,
     scoringVersion: SCORING_VERSION,
   };
 }

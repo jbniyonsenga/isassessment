@@ -89,7 +89,8 @@ export async function sendReportEmail(to: string, pdf: Buffer, filename: string)
       "Hello,\n\n" +
       "Please find attached the report of the IT system quick audit you requested.\n\n" +
       `${DISCLAIMER}\n\n` +
-      "Your email address was used only to send this report and has not been stored.\n",
+      "Your email address is used only to deliver this report; the delivery record is deleted after 12 months.\n" +
+      "It will never be used for marketing.\n",
     attachment: { filename, content: pdf },
   });
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { QUESTIONS } from "./questions";
+import type { Questionnaire } from "./types";
 
 const answer = z.enum(["yes", "partial", "no", "na"]);
 
@@ -17,22 +17,24 @@ export const contextSchema = z.object({
   scope: optionalText(500),
 });
 
-/** A complete submission: every question must be answered (FR-005), unknown ids are rejected. */
+/** Envelope of a submission; answers are checked against the questionnaire with `checkAnswers`. */
 export const submissionSchema = z.object({
-  answers: z
-    .record(z.string(), answer)
-    .refine((a) => Object.keys(a).every((id) => QUESTIONS.some((q) => q.id === id)), {
-      message: "Unknown question id",
-    })
-    .refine((a) => QUESTIONS.every((q) => a[q.id]), {
-      message: "All questions must be answered",
-    }),
+  versionCode: z.string().min(1).max(40),
+  /** Client-generated id so that a double submission creates only one assessment. */
+  clientRequestId: z.uuid(),
+  answers: z.record(z.string().max(20), answer),
   context: contextSchema.prefault({}),
-  /** ISO date the assessment was submitted, so the PDF matches the online report (FR-024). */
-  assessedAt: z.iso.datetime().optional(),
 });
 
-export const emailRequestSchema = submissionSchema.extend({
+/** Every question must be answered (FR-005) and unknown question ids are rejected. */
+export function checkAnswers(questionnaire: Questionnaire, answers: Record<string, unknown>): string | null {
+  const ids = new Set(questionnaire.questions.map((q) => q.id));
+  if (Object.keys(answers).some((id) => !ids.has(id))) return "Unknown question id";
+  if (questionnaire.questions.some((q) => !answers[q.id])) return "All questions must be answered";
+  return null;
+}
+
+export const emailRequestSchema = z.object({
   email: z.email().max(254),
   /** Client-generated key so that a double-click sends only once (FR-036). */
   requestId: z.uuid(),

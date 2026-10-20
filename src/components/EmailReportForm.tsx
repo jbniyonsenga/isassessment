@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { Submitted } from "@/lib/assessment/storage";
 
 type State =
   | { name: "editing" }
@@ -14,7 +13,7 @@ type State =
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Optional email delivery (FR-030 to FR-037). The online report never depends on it (BR-006). */
-export function EmailReportForm({ submission }: { submission: Submitted }) {
+export function EmailReportForm({ token }: { token: string }) {
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState(""); // honeypot
   const [state, setState] = useState<State>({ name: "editing" });
@@ -35,10 +34,10 @@ export function EmailReportForm({ submission }: { submission: Submitted }) {
     if (state.name === "sending") return;
     setState({ name: "sending" });
     try {
-      const res = await fetch("/api/report/email", {
+      const res = await fetch(`/api/report/${token}/email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...submission, email: email.trim(), requestId, website }),
+        body: JSON.stringify({ email: email.trim(), requestId, website }),
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error(body?.error ?? "The email could not be sent.");
@@ -57,8 +56,8 @@ export function EmailReportForm({ submission }: { submission: Submitted }) {
       <div>
         <h2 className="text-lg font-semibold">Receive the PDF report by email</h2>
         <p className="text-sm text-slate-600">
-          Optional. Your address is used only to send this report: it is not stored and will never be used for
-          marketing. <Link href="/privacy" className="underline">Privacy notice</Link>.
+          Optional. Your address is used only to send this report and to keep a record of the delivery for 12
+          months. It will never be used for marketing. <Link href="/privacy" className="underline">Privacy notice</Link>.
         </p>
       </div>
 

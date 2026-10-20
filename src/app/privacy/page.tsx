@@ -8,16 +8,22 @@ export default function PrivacyPage() {
       <h1 className="text-3xl font-bold">Privacy notice</h1>
 
       <section className="space-y-2">
-        <h2 className="text-xl font-semibold">What we process</h2>
+        <h2 className="text-xl font-semibold">What we process and why</h2>
         <ul className="list-disc space-y-1 pl-5">
           <li>
-            <strong>Answers and assessment context</strong> (organization, system name, scope): kept only in your
-            browser tab (session storage). They are sent to the server only to generate a PDF or an email, processed
-            in memory and not stored.
+            <strong>Answers and assessment context</strong> (optional organization name, system name and scope):
+            stored to produce your report and make it available at a private link, and used in aggregated,
+            anonymous form for statistics.
           </li>
           <li>
-            <strong>Email address</strong> (only if you request delivery by email): used solely to send the report.
-            It is not stored, not added to any mailing list and never used for marketing.
+            <strong>Anonymous identifier</strong>: a random identifier stored in a cookie (
+            <code>isa_pid</code>) links your assessments together. It contains no personal information. No account
+            is created.
+          </li>
+          <li>
+            <strong>Email address</strong> (only if you request delivery by email): used to send the report and kept
+            with the delivery record (status, date) for follow-up and abuse prevention. It is never used for
+            marketing and never shared.
           </li>
           <li>
             <strong>Technical data</strong>: your IP address is kept briefly in memory to protect the service
@@ -30,28 +36,33 @@ export default function PrivacyPage() {
       <section className="space-y-2">
         <h2 className="text-xl font-semibold">Retention</h2>
         <p>
-          No assessment is stored on our servers. Your answers are deleted when you close the browser tab or click
-          &quot;Clear my answers&quot; on the report page. Rate-limiting data expires within one hour. Emails sent
+          Assessments, answers, email delivery records and anonymous identifiers are deleted automatically{" "}
+          <strong>12 months</strong> after the assessment. Rate-limiting data expires within one hour. Emails sent
           remain subject to the retention of the email providers involved.
+        </p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-xl font-semibold">Access to reports</h2>
+        <p>
+          Each report is available only at a long, random, unguessable link. Reports are never listed or indexed.
+          Anyone you share the link with can view the report, so share it only with people you trust.
         </p>
       </section>
 
       <section className="space-y-2">
         <h2 className="text-xl font-semibold">Legal basis and your rights</h2>
         <p>
-          Processing is based on your request (sending the report you asked for) and on the legitimate interest of
-          protecting the service. Under the GDPR you have the right to access, rectify and erase your data and to
-          object to processing. As no assessment data is retained, there is usually nothing to access or erase after
-          your session ends.
+          Processing is based on your request (producing and sending the report you asked for) and on the legitimate
+          interest of protecting the service and producing anonymous statistics. Under the GDPR you have the right to
+          access, rectify and erase your data and to object to processing. To exercise these rights, contact us with
+          the link of the report concerned.
         </p>
       </section>
 
       <section className="space-y-2">
         <h2 className="text-xl font-semibold">Security</h2>
-        <p>
-          All communications use HTTPS. Reports are never published at a URL: they exist only in your browser and
-          in the PDF you download or receive.
-        </p>
+        <p>All communications use HTTPS. Data is stored in a database hosted in the cloud by our hosting provider.</p>
       </section>
     </article>
   );

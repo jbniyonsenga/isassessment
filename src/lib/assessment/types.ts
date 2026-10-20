@@ -1,11 +1,5 @@
-export type CriterionId =
-  | "effectiveness"
-  | "efficiency"
-  | "confidentiality"
-  | "integrity"
-  | "availability"
-  | "compliance"
-  | "reliability";
+/** Criterion key, e.g. "confidentiality". */
+export type CriterionId = string;
 
 export type Answer = "yes" | "partial" | "no" | "na";
 
@@ -23,6 +17,14 @@ export interface Question {
   critical?: boolean;
   risk: string;
   recommendation: string;
+}
+
+/** A questionnaire version as used by the scoring engine (loaded from the database at runtime). */
+export interface Questionnaire {
+  code: string;
+  criteria: Criterion[];
+  /** Question ids are the question codes (e.g. "CON-01"), unique within a version. */
+  questions: Question[];
 }
 
 export interface AssessmentContext {
