@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { Suspense } from "react";
+import { SiteNav, SiteNavLinks } from "@/components/SiteNav";
 import { DISCLAIMER } from "@/lib/assessment/config";
 import "./globals.css";
 
@@ -27,21 +29,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
         <header className="border-b border-slate-200 bg-white">
-          <nav className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+          <nav className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
             <Link href="/" className="flex items-center gap-2 font-semibold text-slate-900">
               <Logo size={36} />
               <span>
                 IT System <span className="text-indigo-600">Quick Audit</span>
               </span>
             </Link>
-            <div className="flex gap-4 text-sm text-slate-600">
-              <Link href="/methodology" className="hover:text-slate-900">
-                Methodology
-              </Link>
-              <Link href="/privacy" className="hover:text-slate-900">
-                Privacy
-              </Link>
-            </div>
+            <Suspense fallback={<SiteNavLinks pathname={null} />}>
+              <SiteNav />
+            </Suspense>
           </nav>
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">{children}</main>

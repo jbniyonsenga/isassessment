@@ -129,3 +129,37 @@ model EmailRequest {
   @@index([email, createdAt])
   @@index([createdAt])
 }
+
+// ─── Contact ──────────────────────────────────────────────────────────────────
+
+enum ContactTopic {
+  help
+  feedback
+  partnership
+  privacy
+  other
+}
+
+enum ContactStatus {
+  new
+  handled
+}
+
+/// Message sent through the contact form. Purged with the other data after 12 months.
+model ContactMessage {
+  id           String        @id @default(cuid())
+  /// Client-generated id: a double click stores the message only once.
+  requestId    String        @unique
+  name         String
+  email        String
+  organization String?
+  topic        ContactTopic
+  message      String
+  status       ContactStatus @default(new)
+  /// Set once the message has been forwarded by email (not implemented yet).
+  notifiedAt   DateTime?
+  createdAt    DateTime      @default(now())
+
+  @@index([createdAt])
+  @@index([status, createdAt])
+}

@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { BackLink } from "@/components/BackLink";
 import { ANSWER_POINTS, DISCLAIMER, SCORING_VERSION, THRESHOLDS } from "@/lib/assessment/config";
 import { CRITERIA, QUESTIONNAIRE_VERSION, QUESTIONS } from "@/lib/assessment/questions";
 
-export const metadata: Metadata = { title: "Methodology — IT System Quick Audit" };
+export const metadata: Metadata = { title: "How it works — IT System Quick Audit" };
 
 export default function MethodologyPage() {
   const criticalCount = QUESTIONS.filter((q) => q.critical).length;
   return (
     <article className="max-w-3xl space-y-8">
       <header>
-        <h1 className="text-3xl font-bold">Methodology and limitations</h1>
+        <BackLink />
+        <h1 className="mt-3 text-3xl font-bold">How it works: methodology and limitations</h1>
         <p className="mt-2 text-sm text-slate-500">
           Questionnaire {QUESTIONNAIRE_VERSION} · Scoring {SCORING_VERSION}
         </p>
@@ -78,6 +81,15 @@ export default function MethodologyPage() {
         </ul>
         <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{DISCLAIMER}</p>
       </section>
+
+      <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-6">
+        <Link href="/assessment" className="btn-primary">
+          Start the assessment
+        </Link>
+        <Link href="/" className="btn-secondary">
+          Back to home
+        </Link>
+      </div>
     </article>
   );
 }

@@ -46,16 +46,37 @@ function Questionnaire({ questionnaire }: { questionnaire: QuestionnaireData }) 
   const answeredCount = QUESTIONS.filter((q) => answers[q.id]).length;
   const missing = missingAnswers(questionnaire, answers);
 
+  /** Unanswered questions of a criterion step (1..n); none for the context and review steps. */
+  function missingInStep(i: number): string[] {
+    const c = CRITERIA[i - 1];
+    if (!c) return [];
+    return QUESTIONS.filter((q) => q.criterion === c.id && !answers[q.id]).map((q) => q.id);
+  }
+
+  // Every question is required: a section cannot be skipped until all its questions are answered.
+  const firstIncompleteStep = CRITERIA.findIndex((_, i) => missingInStep(i + 1).length > 0) + 1 || REVIEW_STEP;
+
   function goTo(next: number) {
     setStep(next);
+    setShowMissing(false);
     topRef.current?.scrollIntoView({ behavior: "smooth" });
+  }
+
+  function next() {
+    const stepMissing = missingInStep(step);
+    if (stepMissing.length > 0) {
+      setShowMissing(true);
+      document.getElementById(`q-${stepMissing[0]}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    goTo(step + 1);
   }
 
   async function submit() {
     if (missing.length > 0) {
-      setShowMissing(true);
       const firstMissing = QUESTIONS.find((q) => q.id === missing[0])!;
       goTo(CRITERIA.findIndex((c) => c.id === firstMissing.criterion) + 1);
+      setShowMissing(true);
       return;
     }
     const key = JSON.stringify({ answers, context });
@@ -105,12 +126,15 @@ function Questionnaire({ questionnaire }: { questionnaire: QuestionnaireData }) 
           {["Context", ...CRITERIA.map((c) => c.name), "Review"].map((label, i) => {
             const c = CRITERIA[i - 1];
             const complete = c && QUESTIONS.filter((q) => q.criterion === c.id).every((q) => answers[q.id]);
+            const locked = i > firstIncompleteStep;
             return (
               <li key={label}>
                 <button
                   type="button"
                   onClick={() => goTo(i)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  disabled={locked}
+                  title={locked ? "Answer all questions of the previous sections first" : undefined}
+                  className={`rounded-full px-3 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50 ${
                     i === step
                       ? "bg-indigo-600 text-white"
                       : complete
@@ -175,18 +199,32 @@ function Questionnaire({ questionnaire }: { questionnaire: QuestionnaireData }) 
             </p>
             <h1 className="text-2xl font-semibold">{criterion.name}</h1>
             <p className="text-sm text-slate-600">{criterion.description}</p>
+            <p className="mt-2 text-sm text-slate-500">
+              <span className="text-red-600">*</span> All questions are required. Choose{" "}
+              <strong>Not applicable</strong> if a question does not apply to your system.
+            </p>
           </div>
+          {showMissing && missingInStep(step).length > 0 && (
+            <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              Please answer the {missingInStep(step).length} remaining question(s) of this section to continue.
+            </p>
+          )}
           {QUESTIONS.filter((q) => q.criterion === criterion.id).map((q, index) => {
             const isMissing = showMissing && !answers[q.id];
             return (
               <fieldset
                 key={q.id}
-                className={`card p-5 ${isMissing ? "border-red-400 ring-2 ring-red-100" : ""}`}
+                id={`q-${q.id}`}
+                aria-required="true"
+                className={`card scroll-mt-24 p-5 ${isMissing ? "border-red-400 ring-2 ring-red-100" : ""}`}
               >
-                <legend className="sr-only">{q.text}</legend>
+                <legend className="sr-only">{q.text} (required)</legend>
                 <p className="font-medium">
                   <span className="mr-2 text-slate-400">{index + 1}.</span>
                   {q.text}
+                  <span aria-hidden="true" className="ml-1 text-red-600">
+                    *
+                  </span>
                 </p>
                 {isMissing && <p className="mt-1 text-sm text-red-600">Please answer this question.</p>}
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -196,6 +234,7 @@ function Questionnaire({ questionnaire }: { questionnaire: QuestionnaireData }) 
                         type="radio"
                         name={q.id}
                         value={a}
+                        required
                         checked={answers[q.id] === a}
                         onChange={() => setAnswers({ ...answers, [q.id]: a })}
                         className="peer sr-only"
@@ -263,7 +302,7 @@ function Questionnaire({ questionnaire }: { questionnaire: QuestionnaireData }) 
           ← Previous
         </button>
         {step < REVIEW_STEP ? (
-          <button type="button" className="btn-primary" onClick={() => goTo(step + 1)}>
+          <button type="button" className="btn-primary" onClick={next}>
             {step === CRITERIA.length ? "Review answers" : "Next"} →
           </button>
         ) : (

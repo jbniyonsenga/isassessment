@@ -40,6 +40,19 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="flex flex-col gap-4 rounded-xl border border-indigo-200 bg-indigo-50 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-indigo-950">Need help?</h2>
+          <p className="mt-1 text-sm text-indigo-900">
+            Not sure how to answer a question, how to read your report, or looking for a full audit of your system?
+            Our team is here to help.
+          </p>
+        </div>
+        <Link href="/contact?topic=help" className="btn-primary shrink-0">
+          Contact us
+        </Link>
+      </section>
+
       <section className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
         <strong>Indicative assessment.</strong> The result reflects your own answers. It is not an audit and does not
         constitute an official COBIT compliance certification.

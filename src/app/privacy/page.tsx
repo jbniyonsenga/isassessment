@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { BackLink } from "@/components/BackLink";
 
 export const metadata: Metadata = { title: "Privacy — IT System Quick Audit" };
 
 export default function PrivacyPage() {
   return (
     <article className="max-w-3xl space-y-6">
-      <h1 className="text-3xl font-bold">Privacy notice</h1>
+      <div>
+        <BackLink />
+        <h1 className="mt-3 text-3xl font-bold">Privacy notice</h1>
+      </div>
 
       <section className="space-y-2">
         <h2 className="text-xl font-semibold">What we process and why</h2>
@@ -26,6 +31,10 @@ export default function PrivacyPage() {
             marketing and never shared.
           </li>
           <li>
+            <strong>Contact form messages</strong> (name, email, optional organization, subject and message): stored to
+            answer your request. Never used for marketing and never shared.
+          </li>
+          <li>
             <strong>Technical data</strong>: your IP address is kept briefly in memory to protect the service
             against abuse (rate limiting). Server logs record technical events and errors, without your answers or
             email address.
@@ -36,8 +45,8 @@ export default function PrivacyPage() {
       <section className="space-y-2">
         <h2 className="text-xl font-semibold">Retention</h2>
         <p>
-          Assessments, answers, email delivery records and anonymous identifiers are deleted automatically{" "}
-          <strong>12 months</strong> after the assessment. Rate-limiting data expires within one hour. Emails sent
+          Assessments, answers, email delivery records, contact messages and anonymous identifiers are deleted
+          automatically <strong>12 months</strong> after they were created. Rate-limiting data expires within one hour. Emails sent
           remain subject to the retention of the email providers involved.
         </p>
       </section>
@@ -55,8 +64,11 @@ export default function PrivacyPage() {
         <p>
           Processing is based on your request (producing and sending the report you asked for) and on the legitimate
           interest of protecting the service and producing anonymous statistics. Under the GDPR you have the right to
-          access, rectify and erase your data and to object to processing. To exercise these rights, contact us with
-          the link of the report concerned.
+          access, rectify and erase your data and to object to processing. To exercise these rights, use the{" "}
+          <Link href="/contact?topic=privacy" className="underline">
+            contact form
+          </Link>{" "}
+          (subject &quot;Privacy / my data&quot;) and include the link of the report concerned, if any.
         </p>
       </section>
 
