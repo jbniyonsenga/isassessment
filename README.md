@@ -81,7 +81,7 @@ new version and makes it active. Existing assessments keep pointing to their own
 
 ## Deployment on Railway
 
-`railway.json` defines the build, a pre-deploy step (`prisma migrate deploy` + seed), the start command, a health
+`railway.json` defines the build, the start command (runs `prisma migrate deploy` + seed, then `next start`), a health
 check and a single replica.
 
 1. In Railway, create a project from the GitHub repository (deploys on every push to `main`).
