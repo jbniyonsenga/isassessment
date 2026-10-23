@@ -86,8 +86,8 @@ check and a single replica.
 
 1. In Railway, create a project from the GitHub repository (deploys on every push to `main`).
 2. Add a PostgreSQL service and set `DATABASE_URL=${{Postgres.DATABASE_URL}}` on the app service.
-3. Set the variables `RESEND_API_KEY`, `MAIL_FROM` (an address on a domain verified in Resend) and `CONTACT_TO`
-   (receives contact form messages).
+3. Set the variables `RESEND_API_KEY`, `MAIL_FROM` (an address on a domain verified in Resend), `MAIL_REPLY_TO`
+   (Reply-To of report emails) and `CONTACT_TO` (receives contact form messages).
    Railway blocks outbound SMTP on the Hobby plan, so use Resend there; `SMTP_*` works on Pro.
 4. Under Settings → Networking, generate a domain (HTTPS is provided by Railway) or attach a custom domain.
 

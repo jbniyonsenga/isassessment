@@ -93,6 +93,8 @@ export async function sendReportEmail(to: string, pdf: Buffer, filename: string)
 
   await send({
     to,
+    // Replies from users go to a monitored mailbox rather than the no-reply sender.
+    replyTo: process.env.MAIL_REPLY_TO?.trim() || undefined,
     subject: "Your IT System Quick Audit report",
     text:
       "Hello,\n\n" +
