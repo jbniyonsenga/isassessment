@@ -6,7 +6,8 @@ interface Mail {
   to: string;
   subject: string;
   text: string;
-  attachment: { filename: string; content: Buffer };
+  replyTo?: string;
+  attachment?: { filename: string; content: Buffer };
 }
 
 type Sender = (mail: Mail) => Promise<void>;
@@ -26,11 +27,18 @@ function resendSender(apiKey: string): Sender {
         to: [mail.to],
         subject: mail.subject,
         text: mail.text,
-        attachments: [{ filename: mail.attachment.filename, content: mail.attachment.content.toString("base64") }],
+        reply_to: mail.replyTo,
+        attachments: mail.attachment
+          ? [{ filename: mail.attachment.filename, content: mail.attachment.content.toString("base64") }]
+          : undefined,
       }),
       signal: AbortSignal.timeout(15_000),
     });
-    if (!res.ok) throw new Error(`Resend API responded ${res.status}`);
+    if (!res.ok) {
+      // Resend explains the failure (e.g. unverified domain) in `message`.
+      const detail = await res.json().then((b: { message?: string }) => b.message, () => undefined);
+      throw new Error(`Resend API responded ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+    }
   };
 }
 
@@ -41,7 +49,8 @@ function smtpSender(transport: Transporter): Sender {
       to: mail.to,
       subject: mail.subject,
       text: mail.text,
-      attachments: [{ ...mail.attachment, contentType: "application/pdf" }],
+      replyTo: mail.replyTo,
+      attachments: mail.attachment ? [{ ...mail.attachment, contentType: "application/pdf" }] : undefined,
     });
   };
 }
@@ -92,5 +101,39 @@ export async function sendReportEmail(to: string, pdf: Buffer, filename: string)
       "Your email address is used only to deliver this report; the delivery record is deleted after 12 months.\n" +
       "It will never be used for marketing.\n",
     attachment: { filename, content: pdf },
+  });
+}
+
+export interface ContactNotification {
+  name: string;
+  email: string;
+  organization?: string;
+  topicLabel: string;
+  message: string;
+  receivedAt: Date;
+}
+
+/** Address that receives contact form messages; forwarding is skipped when unset. */
+export function contactRecipient(): string | null {
+  return process.env.CONTACT_TO?.trim() || null;
+}
+
+/** Forwards a contact form message to CONTACT_TO, with Reply-To set to the sender. */
+export async function sendContactNotification(to: string, msg: ContactNotification): Promise<void> {
+  const send = getSender();
+  if (!send) throw new Error("Email delivery is not configured");
+
+  await send({
+    to,
+    replyTo: msg.email,
+    subject: `[Contact] ${msg.topicLabel} — ${msg.name}`,
+    text:
+      `New message from the IT System Quick Audit contact form (${msg.receivedAt.toISOString()}).\n\n` +
+      `Name: ${msg.name}\n` +
+      `Email: ${msg.email}\n` +
+      (msg.organization ? `Organization: ${msg.organization}\n` : "") +
+      `Subject: ${msg.topicLabel}\n\n` +
+      `${msg.message}\n\n` +
+      "Reply to this email to answer the sender directly.\n",
   });
 }

@@ -1,12 +1,16 @@
 import { Prisma } from "@/generated/prisma/client";
-import { contactSchema } from "@/lib/contact";
+import { CONTACT_TOPICS, contactSchema } from "@/lib/contact";
 import { prisma } from "@/lib/server/db";
 import { log } from "@/lib/server/logger";
+import { contactRecipient, isEmailConfigured, sendContactNotification } from "@/lib/server/mailer";
 import { clientIp, rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 import { parseJson } from "@/lib/server/request";
 import { schedulePurge } from "@/lib/server/retention";
 
-/** Stores a contact form message. Forwarding by email will be added later (see ContactMessage.notifiedAt). */
+/**
+ * Stores a contact form message, then forwards it to CONTACT_TO when email is configured.
+ * The message is kept even if forwarding fails (notifiedAt stays empty).
+ */
 export async function POST(request: Request) {
   const limit = rateLimit(`contact:${clientIp(request)}`, 5, 60 * 60 * 1000);
   if (!limit.ok) return tooManyRequests(limit.retryAfter);
@@ -22,11 +26,11 @@ export async function POST(request: Request) {
     return Response.json({ status: "received" }, { status: 201 });
   }
 
+  let saved;
   try {
-    await prisma.contactMessage.create({ data: { requestId, name, email, organization, topic, message } });
+    saved = await prisma.contactMessage.create({ data: { requestId, name, email, organization, topic, message } });
     log.info("contact.received", { topic });
     schedulePurge();
-    return Response.json({ status: "received" }, { status: 201 });
   } catch (error) {
     // Same requestId sent twice (double click): the message is already stored.
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -35,4 +39,22 @@ export async function POST(request: Request) {
     log.error("contact.failed", error);
     return Response.json({ error: "Your message could not be sent. Please try again." }, { status: 500 });
   }
+
+  const to = contactRecipient();
+  if (to && isEmailConfigured()) {
+    try {
+      await sendContactNotification(to, {
+        name,
+        email,
+        organization,
+        topicLabel: CONTACT_TOPICS[topic],
+        message,
+        receivedAt: saved.createdAt,
+      });
+      await prisma.contactMessage.update({ where: { id: saved.id }, data: { notifiedAt: new Date() } });
+    } catch (error) {
+      log.error("contact.notify.failed", error, { id: saved.id });
+    }
+  }
+  return Response.json({ status: "received" }, { status: 201 });
 }
